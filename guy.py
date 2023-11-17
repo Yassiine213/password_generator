@@ -1,81 +1,71 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 from password_manager import PasswordManager
 import os
+import string
+import random
 
-# Configuration et style
-style = ttk.Style()
-style.configure("TLabel", font=("Arial", 12))
-style.configure("TButton", font=("Arial", 12))
-style.configure("TEntry", font=("Arial", 12))
-
-# Générer une clé AES256
-key = os.urandom(32)  # Cette clé doit être conservée de manière sécurisée
-pm = PasswordManager(key)
-
-# Fonctions
-def store_password():
-    site = site_entry.get()
-    username = username_entry.get()
-    password = password_entry.get()
-    pm.store_password(site, username, password)
-    status_label.config(text="Mot de passe enregistré avec succès.", fg="green")
-
-def check_password():
-    site = site_entry.get()
-    username = username_entry.get()
-    password = password_entry.get()
-    if pm.check_password(site, username, password):
-        status_label.config(text="Le mot de passe est correct.", fg="green")
-    else:
-        status_label.config(text="Mot de passe incorrect.", fg="red")
-
-def toggle_fullscreen(event=None):
-    root.attributes("-fullscreen", not root.attributes("-fullscreen"))
-
-# Interface graphique
+# Configuration et style de l'interface graphique
 root = tk.Tk()
 root.title("Gestionnaire de Mots de Passe")
+root.geometry("400x300")
+root.resizable(width=False, height=False)
 
-# Activer le plein écran
-root.attributes("-fullscreen", True)
-# Permettre de basculer en mode fenêtré en appuyant sur la touche 'F11'
-root.bind("<F11>", toggle_fullscreen)
+# Générer une clé AES256 pour le gestionnaire de mots de passe
+key = os.urandom(32)
+pm = PasswordManager(key, "passwords.db")
 
-main_frame = ttk.Frame(root, padding="30")
-main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+# Fonctions de l'application
+def validate_input(site, username, password):
+    """ Vérifie que les entrées ne sont pas vides. """
+    return bool(site and username and password)
 
-# Widgets
-site_label = ttk.Label(main_frame, text="Site/Application :")
-site_label.grid(row=0, column=0, sticky=tk.W, pady=5)
+def display_message(message, error=False):
+    """ Affiche un message de statut sur l'interface. """
+    status_label.config(text=message, fg="red" if error else "green")
 
-site_entry = ttk.Entry(main_frame)
-site_entry.grid(row=0, column=1, pady=5, sticky=(tk.W, tk.E))
+def store_password():
+    """ Stocke le mot de passe après validation. """
+    site, username, password = site_entry.get(), username_entry.get(), password_entry.get()
+    if not validate_input(site, username, password):
+        display_message("Veuillez remplir tous les champs.", True)
+        return
 
-username_label = ttk.Label(main_frame, text="Nom d'Utilisateur :")
-username_label.grid(row=1, column=0, sticky=tk.W, pady=5)
+    pm.store_password(site, username, password)
+    display_message("Mot de passe enregistré avec succès.")
 
-username_entry = ttk.Entry(main_frame)
-username_entry.grid(row=1, column=1, pady=5, sticky=(tk.W, tk.E))
+def check_password():
+    """ Vérifie si le mot de passe est correct. """
+    site, username, password = site_entry.get(), username_entry.get(), password_entry.get()
+    if not validate_input(site, username, password):
+        display_message("Veuillez remplir tous les champs.", True)
+        return
 
-password_label = ttk.Label(main_frame, text="Mot de Passe :")
-password_label.grid(row=2, column=0, sticky=tk.W, pady=5)
+    if pm.check_password(site, username, password):
+        display_message("Mot de passe correct.")
+    else:
+        display_message("Mot de passe incorrect.", True)
 
-password_entry = ttk.Entry(main_frame, show="*")
-password_entry.grid(row=2, column=1, pady=5, sticky=(tk.W, tk.E))
+def generate_random_password():
+    """ Génère un mot de passe aléatoire. """
+    password = ''.join(random.choice(string.ascii_letters + string.digits + string.punctuation) for _ in range(12))
+    password_entry.delete(0, tk.END)
+    password_entry.insert(0, password)
 
-store_button = ttk.Button(main_frame, text="Stocker le mot de passe", command=store_password)
-store_button.grid(row=3, column=0, pady=10, sticky=tk.W)
+# Interface graphique
+site_entry = tk.Entry(root)
+username_entry = tk.Entry(root)
+password_entry = tk.Entry(root, show="*")
+status_label = tk.Label(root, text="", fg="green")
 
-check_button = ttk.Button(main_frame, text="Vérifier le mot de passe", command=check_password)
-check_button.grid(row=3, column=1, pady=10, sticky=tk.W)
+site_entry.pack(pady=5)
+username_entry.pack(pady=5)
+password_entry.pack(pady=5)
 
-status_label = ttk.Label(main_frame, text="", font=("Arial", 10))
-status_label.grid(row=4, column=0, columnspan=2, pady=5)
+tk.Button(root, text="Stocker le mot de passe", command=store_password).pack(pady=5)
+tk.Button(root, text="Vérifier le mot de passe", command=check_password).pack(pady=5)
+tk.Button(root, text="Générer un mot de passe aléatoire", command=generate_random_password).pack(pady=5)
 
-# Configuration de la disposition
-root.columnconfigure(0, weight=1)
-root.rowconfigure(0, weight=1)
-main_frame.columnconfigure(1, weight=1)
+status_label.pack(pady=5)
 
 root.mainloop()
